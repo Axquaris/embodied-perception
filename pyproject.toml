@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ember"
+version = "0.1.0"
+description = "A multi-language project with Python, Rust, and C++"
+authors = [
+    { name = "Domas Buracas", email = "domceb@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+
+# Optional dependencies (for example, for development or testing)
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.2",
+    "black>=21.7b0",
+    "mypy>=0.910",
+    "flake8>=3.9.2"
+]
+
+[tool.setuptools]
+packages = ["ember"]
+
+# Entry points for command-line scripts
+[project.scripts]
+my_script = "src.python.main:main"
