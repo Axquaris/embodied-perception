@@ -1,0 +1,15 @@
+# Core libraries
+--index-url https://download.pytorch.org/whl/cu124
+torch
+torchvision
+torchaudio
+einops
+
+# --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.5.1_cu124.html
+# kaolin
+
+# Devtools
+jupyterlab
+viser
+rerun-sdk
+mediapy
