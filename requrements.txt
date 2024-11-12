@@ -4,6 +4,7 @@ torch
 torchvision
 torchaudio
 einops
+kornia
 
 # --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.5.1_cu124.html
 # kaolin
