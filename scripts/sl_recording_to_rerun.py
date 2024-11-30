@@ -2,9 +2,14 @@ import time
 import pyzed.sl as sl
 import rerun as rr
 import time
+import pathlib as pth
+from ember.util import PROJECT_ROOT
+
+svo_file = str(PROJECT_ROOT / "data/zed_recordings/HD720_SN33087127_15-44-16.svo2")
+
 
 def init_rerun():
-    rr.init("vis_camera", spawn=True)
+    rr.init("vis_recording", spawn=True)
     rr.connect_tcp()  # Connect to a remote viewer
 
 def main():
@@ -14,12 +19,14 @@ def main():
 
     # Set configuration parameters
     init_params = sl.InitParameters()
-    init_params.camera_resolution = (
-        sl.RESOLUTION.HD720
-    )
-    # sl.RESOLUTION.HD720 video mode for USB cameras,
-    # sl.RESOLUTION.HD1200 for GMSL cameras
-    init_params.camera_fps = 60
+    init_params.set_from_svo_file(svo_file)
+    init_params.depth_mode = sl.DEPTH_MODE.ULTRA
+    # NONE	No depth map computation.
+    # PERFORMANCE	Computation mode optimized for speed.
+    # QUALITY	Computation mode designed for challenging areas with untextured surfaces.
+    # ULTRA	Computation mode that favors edges and sharpness.
+    # NEURAL	End to End Neural disparity estimation.
+    # NEURAL_PLUS
 
     # Open the camera
     err = zed_camera.open(init_params)
@@ -35,14 +42,16 @@ def main():
     sl_depth = sl.Mat()
     sl_sensor_data = sl.SensorsData()
 
-    while frame_idx < 60:
+    while zed_camera.get_svo_position() < zed_camera.get_svo_number_of_frames() - 1:
         # Grab an image
-        if (
-            zed_camera.grab(runtime_param) == sl.ERROR_CODE.SUCCESS
-        ):  # A new image is available if grab() returns SUCCESS
+        err = zed_camera.grab(runtime_param)
+        if err == sl.ERROR_CODE.END_OF_SVOFILE_REACHED:
+            print("End of SVO file reached.")
+            break
+        elif err == sl.ERROR_CODE.SUCCESS:
             rr.set_time_sequence("zed_camera/image_idx", frame_idx)
 
-            # Get the timestamp+
+            # Get the timestamp
             timestamp = zed_camera.get_timestamp(sl.TIME_REFERENCE.IMAGE)
             rr.set_time_nanos("zed_camera/image_time", timestamp.get_nanoseconds())
             
@@ -83,9 +92,11 @@ def main():
 
             frame_idx = frame_idx + 1
             rr.reset_time()
-            time.sleep(0.1)
+        else:
+            print("Error during grab: ", err)
 
     zed_camera.close()
+    rr.disconnect()
     return 0
 
 
