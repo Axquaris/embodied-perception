@@ -9,7 +9,7 @@ import rerun as rr
 from ember.util import PROJECT_ROOT, TEST_SVO2_PATH
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Frame:
     """Container for all data from a single ZED camera frame.
 
@@ -24,9 +24,16 @@ class Frame:
     depth : np.ndarray
         shape (H, W)
     angular_velocity : np.ndarray
-        Angular velocity from IMU
+        Angular velocity from IMU (+ clockwise)
+        X axis is right
+        Y axis is down
+        Z axis is forwards
     linear_acceleration : np.ndarray
         Linear acceleration from IMU
+        Moving forward along an axis is negative, gravity is negative in Y
+        X axis is right
+        Y axis is down
+        Z axis is forwards
     rotation : np.ndarray
         3x3 rotation matrix
     translation : np.ndarray
@@ -34,33 +41,57 @@ class Frame:
     frame_index : int
         Frame number in sequence
     """
+    name: Optional[str] = "zed_camera"  # Optional name for the frame
+    frame_index: int  # Frame number in sequence
     timestamp_ns: int  # nanoseconds
-    image_left: np.ndarray  # RGBA image
-    image_right: np.ndarray  # RGBA image
-    depth: np.ndarray  # Depth map
+
+    image_left: Optional[np.ndarray] = None  # RGBA image
+    image_right: Optional[np.ndarray] = None  # RGBA image
+    depth: Optional[np.ndarray] = None  # Depth map
+
     angular_velocity: np.ndarray  # Angular velocity from IMU
     linear_acceleration: np.ndarray  # Linear acceleration from IMU
     rotation: np.ndarray  # 3x3 rotation matrix
     translation: np.ndarray  # 3D translation vector
-    frame_index: int  # Frame number in sequence
-    name: Optional[str] = "zed_camera"  # Optional name for the frame
 
     def log_rerun(self):
         """Log frame data to Rerun."""
         rr.set_time_sequence(f"{self.name}/image_idx", self.frame_index)
         rr.set_time_nanos(f"{self.name}/image_time", self.timestamp_ns)
         
-        rr.log(f"{self.name}/image_left", rr.Image(self.image_left))
-        rr.log(f"{self.name}/image_right", rr.Image(self.image_right))
-        rr.log(f"{self.name}/depth", rr.DepthImage(self.depth))
+        if self.image_left is not None:
+            rr.log(f"{self.name}/image_left", rr.Image(self.image_left))
+
+        if self.image_right is not None:
+            rr.log(f"{self.name}/image_right", rr.Image(self.image_right))
+
+        if self.depth is not None:
+            rr.log(f"{self.name}/depth", rr.DepthImage(self.depth))
+
         rr.log(f"{self.name}/pose", rr.Transform3D(
             mat3x3=self.rotation,
             translation=self.translation
         ))
-        rr.log(f"{self.name}/angular_velocity", rr.AnyValues(
-            av=self.angular_velocity
-        ))
+
+        for axis, value in zip("xyz", self.linear_acceleration):
+            rr.log(f"{self.name}/linear_acceleration/{axis}", rr.Scalar(value))
+
+        for axis, value in zip("xyz", self.angular_velocity):
+            rr.log(f"{self.name}/angular_velocity/{axis}", rr.Scalar(value))
+        
         rr.reset_time()
+
+    def show(self):
+        """Show the frame data in notebook."""
+        import matplotlib.pyplot as plt
+        fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+        axs[0].imshow(self.image_left)
+        axs[0].set_title("Left Image")
+        axs[1].imshow(self.image_right)
+        axs[1].set_title("Right Image")
+        axs[2].imshow(self.depth, cmap='viridis')
+        axs[2].set_title("Depth Map")
+        plt.show()
 
 
 class ZedInterface(ABC):
@@ -126,7 +157,8 @@ class ZedRecording(ZedInterface):
     def __init__(
         self,
         svo_path: str | Path = TEST_SVO2_PATH,
-        depth_mode: sl.DEPTH_MODE = sl.DEPTH_MODE.ULTRA
+        depth_mode: sl.DEPTH_MODE = sl.DEPTH_MODE.ULTRA,
+        imu_only: bool = False
     ) -> None:
         """Initialize ZED camera with an SVO recording.
 
@@ -147,7 +179,8 @@ class ZedRecording(ZedInterface):
         # Configure initialization parameters
         init_params = sl.InitParameters()
         init_params.set_from_svo_file(str(PROJECT_ROOT / svo_path))
-        init_params.depth_mode = depth_mode
+        if not imu_only:
+            init_params.depth_mode = depth_mode
         
         # Open camera
         err = self.zed_camera.open(init_params)
@@ -166,6 +199,7 @@ class ZedRecording(ZedInterface):
         }
         
         self._frame_idx = 0
+        self.imu_only = imu_only
     
     def __next__(self) -> Frame:
         """Get next frame from recording."""
@@ -181,8 +215,12 @@ class ZedRecording(ZedInterface):
             raise RuntimeError(f"Error grabbing frame: {err}")
         
         timestamp_ns = self._get_timestamp_ns()
-        left_image, right_image = self._get_images()
-        depth = self._get_depth()
+        if self.imu_only:
+            left_image, right_image = None, None
+            depth = None
+        else:
+            left_image, right_image = self._get_images()
+            depth = self._get_depth()
         angular_velocity, linear_acceleration, rotation, translation = self._get_imu_data()
         
         # Package everything into a Frame object
@@ -224,7 +262,8 @@ class ZedLive(ZedInterface):
     
     def __init__(
         self,
-        depth_mode: sl.DEPTH_MODE = sl.DEPTH_MODE.ULTRA
+        depth_mode: sl.DEPTH_MODE = sl.DEPTH_MODE.ULTRA,
+        imu_only: bool = False
     ) -> None:
         """Initialize ZED camera with an SVO recording.
 
@@ -232,6 +271,8 @@ class ZedLive(ZedInterface):
         ----------
         depth_mode : sl.DEPTH_MODE, optional
             ZED depth computation mode, by default sl.DEPTH_MODE.ULTRA
+        imu_only : bool, optional
+            Only retrieve IMU data, by default False
 
         Raises
         ------
@@ -267,6 +308,7 @@ class ZedLive(ZedInterface):
         }
         
         self._frame_idx = 0
+        self.imu_only = imu_only
     
     def __next__(self) -> Frame:
         """Get next frame from recording."""
@@ -275,8 +317,12 @@ class ZedLive(ZedInterface):
             raise RuntimeError(f"Error grabbing frame: {err}")
         
         timestamp_ns = self._get_timestamp_ns()
-        left_image, right_image = self._get_images()
-        depth = self._get_depth()
+        if self.imu_only:
+            left_image, right_image = None, None
+            depth = None
+        else:
+            left_image, right_image = self._get_images()
+            depth = self._get_depth()
         angular_velocity, linear_acceleration, rotation, translation = self._get_imu_data()
         
         # Package everything into a Frame object

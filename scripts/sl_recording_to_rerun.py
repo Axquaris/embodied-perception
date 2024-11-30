@@ -1,10 +1,13 @@
 import rerun as rr
+
 from ember.zed import ZedRecording
+
 
 def init_rerun():
     """Initialize Rerun visualization."""
     rr.init("vis_recording", spawn=True)
     rr.connect_tcp()  # Connect to a remote viewer
+
 
 def main():
     init_rerun()
@@ -17,6 +20,7 @@ def main():
 
     rr.disconnect()
     return 0
+
 
 if __name__ == "__main__":
     main()
