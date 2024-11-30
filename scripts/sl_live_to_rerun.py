@@ -1,7 +1,5 @@
-import time
-import pyzed.sl as sl
 import rerun as rr
-import time
+from ember.zed import ZedLive
 
 def init_rerun():
     rr.init("vis_camera", spawn=True)
@@ -10,82 +8,11 @@ def init_rerun():
 def main():
     init_rerun()
 
-    zed_camera = sl.Camera()
+    with ZedLive() as zed:
+        for frame in zed:
+            frame.log_rerun()
 
-    # Set configuration parameters
-    init_params = sl.InitParameters()
-    init_params.camera_resolution = (
-        sl.RESOLUTION.HD720
-    )
-    # sl.RESOLUTION.HD720 video mode for USB cameras,
-    # sl.RESOLUTION.HD1200 for GMSL cameras
-    init_params.camera_fps = 60
-
-    # Open the camera
-    err = zed_camera.open(init_params)
-    if err != sl.ERROR_CODE.SUCCESS:
-        print(repr(err))
-        exit(-1)
-
-    runtime_param = sl.RuntimeParameters()
-
-    # Main loop grabbing images and depth values
-    frame_idx = 0
-    sl_image = sl.Mat()
-    sl_depth = sl.Mat()
-    sl_sensor_data = sl.SensorsData()
-
-    while frame_idx < 60:
-        # Grab an image
-        if (
-            zed_camera.grab(runtime_param) == sl.ERROR_CODE.SUCCESS
-        ):  # A new image is available if grab() returns SUCCESS
-            rr.set_time_sequence("zed_camera/image_idx", frame_idx)
-
-            # Get the timestamp+
-            timestamp = zed_camera.get_timestamp(sl.TIME_REFERENCE.IMAGE)
-            rr.set_time_nanos("zed_camera/image_time", timestamp.get_nanoseconds())
-            
-            # Get the left image
-            zed_camera.retrieve_image(sl_image, sl.VIEW.LEFT)  
-            image = sl_image.numpy()
-            image[..., :3] = image[..., 2::-1]  # BGRA -> RGBA
-
-            rr.log("zed_camera/rgb", rr.Image(image))
-
-            # Get the depth map
-            zed_camera.retrieve_measure(sl_depth, sl.MEASURE.DEPTH)  
-            depth = sl_depth.numpy()
-
-            rr.log("zed_camera/depth", rr.DepthImage(depth))
-
-            # Get imu data
-            zed_camera.get_sensors_data(
-                sl_sensor_data,
-                time_reference=sl.TIME_REFERENCE.IMAGE
-            )
-            imu_data = sl_sensor_data.get_imu_data()
-            print(imu_data.get_angular_velocity())
-            print(imu_data.get_linear_acceleration())
-            # rr.log("pose", rr.IMU(sl_imu))
-            pose = imu_data.get_pose()
-            rot_3x3 = pose.get_rotation_matrix().r
-            translation = pose.get_translation().get()
-            
-            rr.log("zed_camera/pose", rr.Transform3D(
-                mat3x3=rot_3x3,
-                translation=translation
-            ))
-            
-            rr.log("zed_camera/angular_velocity", rr.AnyValues(
-                av=imu_data.get_angular_velocity()
-            ))
-
-            frame_idx = frame_idx + 1
-            rr.reset_time()
-            time.sleep(0.1)
-
-    zed_camera.close()
+    rr.disconnect()
     return 0
 
 
