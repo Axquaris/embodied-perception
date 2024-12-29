@@ -1,6 +1,12 @@
 # 🔥 Ember! 🐲
 **Emb**odied P**er**ception
 
+## Repository Structure
+- `ember`: Core utils used by many experiments
+- `experiments`: Contains medium-to-large scale experiments / models which are in a too "early" state for integration as core components
+- `notebooks`: Short one-off demos, tests, and experiments
+- `scripts`: Like `notebooks` but meant for CLI interfacing
+
 
 ## Python setup
 ```bash

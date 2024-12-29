@@ -5,6 +5,11 @@ torchvision
 torchaudio
 einops
 kornia
+ninja
+git+https://github.com/nerfstudio-project/gsplat.git
+# nerfview # debating whether to add this dependency
+nerfstudio
+# https://github.com/NVlabs/nvdiffrast.git # for differentiable rendering pipelines
 
 # --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.5.1_cu124.html
 # kaolin
