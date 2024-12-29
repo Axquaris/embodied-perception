@@ -1,10 +1,9 @@
 import rerun as rr
 
-from ember.zed import ZedRecording
+from ember.wrappers.zed import ZedRecording
 
 
 def init_rerun():
-    """Initialize Rerun visualization."""
     rr.init("vis_recording", spawn=True)
     rr.connect_tcp()  # Connect to a remote viewer
 

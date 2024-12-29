@@ -223,6 +223,9 @@ class ZedRecording(ZedInterface):
             depth = self._get_depth()
         angular_velocity, linear_acceleration, rotation, translation = self._get_imu_data()
         
+        point_cloud_xyzrgba = sl.Mat()
+        self.zed_camera.retrieve_measure(point_cloud_xyzrgba, sl.MEASURE.XYZRGBA)
+
         # Package everything into a Frame object
         frame = Frame(
             timestamp_ns=timestamp_ns,
@@ -237,7 +240,7 @@ class ZedRecording(ZedInterface):
         )
         
         self._frame_idx += 1
-        return frame
+        return frame, point_cloud_xyzrgba.get_data().copy()
     
     @property
     def frame_count(self) -> int:

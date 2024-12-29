@@ -1,7 +1,7 @@
 import rerun as rr
 import time
 
-from ember.zed import ZedLive
+from ember.wrappers.zed import ZedLive
 
 
 def init_rerun():
