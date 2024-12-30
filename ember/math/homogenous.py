@@ -13,4 +13,4 @@ def from_homogenous(
     points: Float[Tensor, "..."]
 ) -> Float[Tensor, "..."]:
     """Converts points from homogenous coordinates by dividing by the last element."""
-    return points[..., :-1] / points[..., -1:]
+    return points[..., :-1] / (points[..., -1:] + 1e-12)

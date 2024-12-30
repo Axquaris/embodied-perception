@@ -179,6 +179,8 @@ class ZedRecording(ZedInterface):
         # Configure initialization parameters
         init_params = sl.InitParameters()
         init_params.set_from_svo_file(str(PROJECT_ROOT / svo_path))
+        init_params.coordinate_units = sl.UNIT.METER
+        init_params.coordinate_system = sl.COORDINATE_SYSTEM.LEFT_HANDED_Y_UP
         if not imu_only:
             init_params.depth_mode = depth_mode
         
@@ -293,6 +295,8 @@ class ZedLive(ZedInterface):
         # sl.RESOLUTION.HD1200 for GMSL cameras
         init_params.camera_fps = 60
         init_params.depth_mode = depth_mode
+        init_params.coordinate_units = sl.UNIT.METER
+        init_params.coordinate_system = sl.COORDINATE_SYSTEM.LEFT_HANDED_Y_UP
         
         # Open camera
         err = self.zed_camera.open(init_params)

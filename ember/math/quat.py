@@ -1,6 +1,11 @@
 import torch
+from torch import Tensor
+from jaxtyping import Float
 
-def qvec2rotmat(qvec):
+
+def qvec2rotmat(
+    qvec: Float[Tensor, "4"],
+) -> Float[Tensor, "3 3"]:
     return torch.tensor(
         [
             [
@@ -20,5 +25,4 @@ def qvec2rotmat(qvec):
             ],
         ],
         dtype=torch.float32,
-        device="cuda",
     )

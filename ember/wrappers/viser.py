@@ -11,7 +11,7 @@ class ViserServer(viser.ViserServer):
         self.gui.configure_theme(dark_mode=True)
 
         self.scene.add_frame("origin")
-        self.scene.set_up_direction((0., 1., 0.))
+        self.scene.set_up_direction("+y")
 
     def wait_for_camera(self) -> Tuple[viser.ClientHandle, viser.CameraHandle]:
         while not list(self.get_clients().values()):
